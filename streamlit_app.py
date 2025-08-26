@@ -1,40 +1,62 @@
 import streamlit as st
+from gradio_client import Client
+import tempfile
+import base64
+import os
 
-st.set_page_config(page_title="Streamix-AI Video", layout="centered")
+st.set_page_config(layout="wide")
+st.title("Generatore di Video AI - InstaVideo")
 
-st.title("🎬 Streamix-AI Video")
-st.write("Génère des vidéos en temps réel grâce à **Streamix-AI Video**.")
+# Inizializza il client
+client = Client("jbilcke-hf/InstaVideo")
 
-prompt = st.text_area(
-    "📝 Décris la vidéo que tu veux générer :",
-    placeholder="Exemple : Un coucher de soleil sur la plage avec des vagues..."
-)
+# Sidebar per il prompt
+st.sidebar.header("Impostazioni Video")
+prompt = st.sidebar.text_area("Prompt", "cinematic footage, dancing in the streets")
+negative_prompt = st.sidebar.text_area("Negative Prompt", "low quality, blurry")
+width = st.sidebar.number_input("Width", min_value=64, max_value=1280, value=640, step=64)
+height = st.sidebar.number_input("Height", min_value=64, max_value=1280, value=384, step=64)
+duration_seconds = st.sidebar.slider("Durata (secondi)", min_value=1, max_value=10, value=2)
+steps = st.sidebar.slider("Steps", min_value=1, max_value=50, value=4)
+guidance_scale = st.sidebar.slider("Guidance Scale", min_value=0.0, max_value=20.0, value=1.0)
+seed = st.sidebar.number_input("Seed", min_value=0, max_value=999999, value=42)
+randomize_seed = st.sidebar.checkbox("Randomize Seed", value=True)
 
-# Tu gardes TON bouton/UX ; on n'appelle pas gradio_client pour éviter le 403.
-if st.button("🚀 Générer la vidéo") and prompt.strip():
-    st.success("✅ Vidéo générée !")
+if st.button("Genera Video"):
+    if not prompt.strip():
+        st.warning("Inserisci un prompt per generare il video.")
+    else:
+        with st.spinner("Generazione del video in corso..."):
+            try:
+                # Chiamata al modello
+                video_bytes = client.predict(
+                    prompt=prompt,
+                    height=height,
+                    width=width,
+                    negative_prompt=negative_prompt,
+                    duration_seconds=duration_seconds,
+                    guidance_scale=guidance_scale,
+                    steps=steps,
+                    seed=seed,
+                    randomize_seed=randomize_seed,
+                    api_name="/generate_video"
+                )
 
-    # URL du Space en mode 'embed' (enlève le header Hugging Face standard)
-    EMBED_URL = "https://heartsync-veo3-realtime.hf.space/?embedded=true&__theme=light"
+                # Salva temporaneamente il video
+                tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+                tmp_file.write(video_bytes)
+                tmp_file.close()
 
-    # On affiche l'iframe et on masque visuellement la zone haute (où apparaît le titre VEO3)
-    component_html = f"""
-    <div style="position:relative;width:100%;height:700px;overflow:hidden;border-radius:12px;">
-      <iframe
-        src="{EMBED_URL}"
-        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
-        allow="autoplay; encrypted-media; camera; microphone">
-      </iframe>
+                st.video(tmp_file.name)
+                
+                # Pulsante per scaricare
+                with open(tmp_file.name, "rb") as f:
+                    video_data = f.read()
+                    b64 = base64.b64encode(video_data).decode()
+                    st.markdown(f"[Scarica Video](data:video/mp4;base64,{b64})", unsafe_allow_html=True)
 
-      <!-- Masque visuel : cache la bande du haut qui contient le titre/branding -->
-      <div style="
-          position:absolute;
-          top:0; left:0; right:0;
-          height:160px;            /* ajuste cette valeur si besoin */
-          background: white;       /* assortis à ton thème */
-          pointer-events:none;     /* pour laisser passer les clics vers l'iframe */
-        ">
-      </div>
-    </div>
-    """
-    st.components.v1.html(component_html, height=700)
+                # Rimuovi il file temporaneo
+                os.unlink(tmp_file.name)
+
+            except Exception as e:
+                st.error(f"Errore durante la generazione del video: {e}")
