@@ -3,14 +3,13 @@ from gradio_client import Client
 import tempfile
 import base64
 import os
+import shutil
 
 st.set_page_config(layout="wide")
 st.title("Generatore di Video AI - InstaVideo")
 
-# Inizializza il client
 client = Client("jbilcke-hf/InstaVideo")
 
-# Sidebar per il prompt e le impostazioni
 st.sidebar.header("Impostazioni Video")
 prompt = st.sidebar.text_area("Prompt", "cinematic footage, dancing in the streets")
 negative_prompt = st.sidebar.text_area("Negative Prompt", "low quality, blurry")
@@ -42,32 +41,18 @@ if st.button("Genera Video"):
                     api_name="/generate_video"
                 )
 
-                # Stampa il risultato per capire la struttura (solo la prima volta)
-                st.write("Struttura del risultato restituito dal modello:")
-                st.write(result)
+                # Il risultato è un tuple: (dict con percorso video, dimensione)
+                if isinstance(result, tuple) and "video" in result[0]:
+                    video_path = result[0]["video"]
 
-                # Prova a estrarre i bytes del video
-                video_bytes = None
-                if isinstance(result, dict):
-                    # Controlla chiavi comuni
-                    for key in ["video", "data", "output"]:
-                        if key in result:
-                            video_bytes = result[key]
-                            break
-                elif isinstance(result, (bytes, bytearray)):
-                    video_bytes = result
-
-                if not video_bytes:
-                    st.error("Errore: non è stato possibile trovare i dati video nel risultato.")
-                else:
-                    # Salva temporaneamente il video
+                    # Copia il file temporaneo in un file leggibile da Streamlit
                     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-                    tmp_file.write(video_bytes)
+                    shutil.copy(video_path, tmp_file.name)
                     tmp_file.close()
 
                     # Mostra il video
                     st.video(tmp_file.name)
-                    
+
                     # Pulsante per scaricare
                     with open(tmp_file.name, "rb") as f:
                         video_data = f.read()
@@ -76,6 +61,8 @@ if st.button("Genera Video"):
 
                     # Rimuovi il file temporaneo
                     os.unlink(tmp_file.name)
+                else:
+                    st.error("Errore: il video non è stato trovato nel risultato.")
 
             except Exception as e:
                 st.error(f"Errore durante la generazione del video: {e}")
