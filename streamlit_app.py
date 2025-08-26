@@ -44,7 +44,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown('<div class="title-center">🎬 Generate a video in 3 easy steps!</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-center">🎬 StreamVideo-AI Generate video!</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle-center">✨ Add your topic and detailed instructions to get started.</div>', unsafe_allow_html=True)
 
 # --- MAIN INPUT ---
