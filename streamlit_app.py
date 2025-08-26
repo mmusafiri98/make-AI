@@ -42,21 +42,24 @@ if st.button("Genera Video"):
                     api_name="/generate_video"
                 )
 
-                # Controlla il tipo di risultato e ottieni i bytes
-                if isinstance(result, dict):
-                    # La chiave può variare: spesso è "video" o "data"
-                    if "video" in result:
-                        video_bytes = result["video"]
-                    elif "data" in result:
-                        video_bytes = result["data"]
-                    else:
-                        st.error("Errore: il video non è stato trovato nel risultato.")
-                        video_bytes = None
-                else:
-                    st.error("Errore: formato del risultato non riconosciuto.")
-                    video_bytes = None
+                # Stampa il risultato per capire la struttura (solo la prima volta)
+                st.write("Struttura del risultato restituito dal modello:")
+                st.write(result)
 
-                if video_bytes:
+                # Prova a estrarre i bytes del video
+                video_bytes = None
+                if isinstance(result, dict):
+                    # Controlla chiavi comuni
+                    for key in ["video", "data", "output"]:
+                        if key in result:
+                            video_bytes = result[key]
+                            break
+                elif isinstance(result, (bytes, bytearray)):
+                    video_bytes = result
+
+                if not video_bytes:
+                    st.error("Errore: non è stato possibile trovare i dati video nel risultato.")
+                else:
                     # Salva temporaneamente il video
                     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
                     tmp_file.write(video_bytes)
@@ -65,7 +68,7 @@ if st.button("Genera Video"):
                     # Mostra il video
                     st.video(tmp_file.name)
                     
-                    # Pulsante per scaricare il video
+                    # Pulsante per scaricare
                     with open(tmp_file.name, "rb") as f:
                         video_data = f.read()
                         b64 = base64.b64encode(video_data).decode()
