@@ -4,9 +4,14 @@ import tempfile
 import base64
 import os
 import shutil
+import uuid
 
 # Config layout
 st.set_page_config(page_title="StreamVideo-AI", layout="wide")
+
+# --- INIT SESSION ---
+if "gallery" not in st.session_state:
+    st.session_state["gallery"] = []  # liste des vidéos générées
 
 # --- HEADER ---
 st.markdown(
@@ -61,6 +66,17 @@ guidance_scale = st.sidebar.slider("Guidance Scale", min_value=0.0, max_value=20
 seed = st.sidebar.number_input("Seed", min_value=0, max_value=999999, value=42)
 randomize_seed = st.sidebar.checkbox("Randomize Seed", value=True)
 
+# --- GALLERY MENU ---
+st.sidebar.header("📂 Gallery")
+if st.session_state["gallery"]:
+    for idx, item in enumerate(st.session_state["gallery"]):
+        with st.sidebar.expander(f"Video {idx+1}"):
+            st.video(item["path"])
+            st.markdown(f"[⬇️ Download Video {idx+1}]({item['download_link']})", unsafe_allow_html=True)
+else:
+    st.sidebar.info("No videos generated yet.")
+
+# --- CLIENT ---
 client = Client("jbilcke-hf/InstaVideo")
 
 # --- GENERATE BUTTON ---
@@ -86,21 +102,29 @@ if st.button("✨ Generate"):
                 if isinstance(result, tuple) and "video" in result[0]:
                     video_path = result[0]["video"]
 
-                    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-                    shutil.copy(video_path, tmp_file.name)
-                    tmp_file.close()
+                    # Unique filename
+                    unique_name = f"video_{uuid.uuid4().hex}.mp4"
+                    save_path = os.path.join(tempfile.gettempdir(), unique_name)
+                    shutil.copy(video_path, save_path)
 
-                    st.video(tmp_file.name)
-
-                    with open(tmp_file.name, "rb") as f:
+                    # Base64 for download link
+                    with open(save_path, "rb") as f:
                         video_data = f.read()
                         b64 = base64.b64encode(video_data).decode()
-                        st.markdown(f"[⬇️ Download Video](data:video/mp4;base64,{b64})", unsafe_allow_html=True)
+                        download_link = f"data:video/mp4;base64,{b64}"
 
-                    os.unlink(tmp_file.name)
+                    # Show in main screen
+                    st.video(save_path)
+                    st.markdown(f"[⬇️ Download Video]({download_link})", unsafe_allow_html=True)
+
+                    # Save in gallery
+                    st.session_state["gallery"].append({
+                        "path": save_path,
+                        "download_link": download_link
+                    })
+
                 else:
                     st.error("Error: No video found in the result.")
 
             except Exception as e:
                 st.error(f"Error while generating video: {e}")
-
