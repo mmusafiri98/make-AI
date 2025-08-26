@@ -10,7 +10,7 @@ st.title("Generatore di Video AI - InstaVideo")
 # Inizializza il client
 client = Client("jbilcke-hf/InstaVideo")
 
-# Sidebar per il prompt
+# Sidebar per il prompt e le impostazioni
 st.sidebar.header("Impostazioni Video")
 prompt = st.sidebar.text_area("Prompt", "cinematic footage, dancing in the streets")
 negative_prompt = st.sidebar.text_area("Negative Prompt", "low quality, blurry")
@@ -29,7 +29,7 @@ if st.button("Genera Video"):
         with st.spinner("Generazione del video in corso..."):
             try:
                 # Chiamata al modello
-                video_bytes = client.predict(
+                result = client.predict(
                     prompt=prompt,
                     height=height,
                     width=width,
@@ -42,11 +42,15 @@ if st.button("Genera Video"):
                     api_name="/generate_video"
                 )
 
+                # Estrai i bytes dal tuple restituito
+                video_bytes = result[0] if isinstance(result, tuple) else result
+
                 # Salva temporaneamente il video
                 tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
                 tmp_file.write(video_bytes)
                 tmp_file.close()
 
+                # Mostra il video
                 st.video(tmp_file.name)
                 
                 # Pulsante per scaricare
@@ -60,3 +64,5 @@ if st.button("Genera Video"):
 
             except Exception as e:
                 st.error(f"Errore durante la generazione del video: {e}")
+
+                
