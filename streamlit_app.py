@@ -5,29 +5,71 @@ import base64
 import os
 import shutil
 
-st.set_page_config(layout="wide")
-st.title("Generatore di Video AI - InstaVideo")
+# Config layout
+st.set_page_config(page_title="StreamVideo-AI", layout="wide")
 
-client = Client("jbilcke-hf/InstaVideo")
+# --- HEADER ---
+st.markdown(
+    """
+    <style>
+    .title-center {
+        text-align: center;
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .subtitle-center {
+        text-align: center;
+        font-size: 18px;
+        color: #666;
+        margin-bottom: 30px;
+    }
+    .big-textbox textarea {
+        min-height: 200px !important;
+        font-size: 16px;
+    }
+    .stButton>button {
+        background: linear-gradient(90deg, #a855f7, #ec4899);
+        color: white;
+        font-weight: bold;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: none;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(90deg, #9333ea, #db2777);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-st.sidebar.header("Impostazioni Video")
-prompt = st.sidebar.text_area("Prompt", "cinematic footage, dancing in the streets")
+st.markdown('<div class="title-center">🎬 Generate a video in 3 easy steps!</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle-center">✨ Add your topic and detailed instructions to get started.</div>', unsafe_allow_html=True)
+
+# --- MAIN INPUT ---
+prompt = st.text_area(" ", placeholder="Write your video idea here...", key="main_prompt", label_visibility="collapsed", help="Describe your video prompt", height=200)
+
+# Advanced options in sidebar
+st.sidebar.header("⚙️ Advanced Settings")
 negative_prompt = st.sidebar.text_area("Negative Prompt", "low quality, blurry")
 width = st.sidebar.number_input("Width", min_value=64, max_value=1280, value=640, step=64)
 height = st.sidebar.number_input("Height", min_value=64, max_value=1280, value=384, step=64)
-duration_seconds = st.sidebar.slider("Durata (secondi)", min_value=1, max_value=10, value=2)
+duration_seconds = st.sidebar.slider("Duration (seconds)", min_value=1, max_value=10, value=2)
 steps = st.sidebar.slider("Steps", min_value=1, max_value=50, value=4)
 guidance_scale = st.sidebar.slider("Guidance Scale", min_value=0.0, max_value=20.0, value=1.0)
 seed = st.sidebar.number_input("Seed", min_value=0, max_value=999999, value=42)
 randomize_seed = st.sidebar.checkbox("Randomize Seed", value=True)
 
-if st.button("Genera Video"):
+client = Client("jbilcke-hf/InstaVideo")
+
+# --- GENERATE BUTTON ---
+if st.button("✨ Generate"):
     if not prompt.strip():
-        st.warning("Inserisci un prompt per generare il video.")
+        st.warning("Please enter a prompt to generate the video.")
     else:
-        with st.spinner("Generazione del video in corso..."):
+        with st.spinner("🎥 Generating your video..."):
             try:
-                # Chiamata al modello
                 result = client.predict(
                     prompt=prompt,
                     height=height,
@@ -41,28 +83,24 @@ if st.button("Genera Video"):
                     api_name="/generate_video"
                 )
 
-                # Il risultato è un tuple: (dict con percorso video, dimensione)
                 if isinstance(result, tuple) and "video" in result[0]:
                     video_path = result[0]["video"]
 
-                    # Copia il file temporaneo in un file leggibile da Streamlit
                     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
                     shutil.copy(video_path, tmp_file.name)
                     tmp_file.close()
 
-                    # Mostra il video
                     st.video(tmp_file.name)
 
-                    # Pulsante per scaricare
                     with open(tmp_file.name, "rb") as f:
                         video_data = f.read()
                         b64 = base64.b64encode(video_data).decode()
-                        st.markdown(f"[Scarica Video](data:video/mp4;base64,{b64})", unsafe_allow_html=True)
+                        st.markdown(f"[⬇️ Download Video](data:video/mp4;base64,{b64})", unsafe_allow_html=True)
 
-                    # Rimuovi il file temporaneo
                     os.unlink(tmp_file.name)
                 else:
-                    st.error("Errore: il video non è stato trovato nel risultato.")
+                    st.error("Error: No video found in the result.")
 
             except Exception as e:
-                st.error(f"Errore durante la generazione del video: {e}")
+                st.error(f"Error while generating video: {e}")
+
