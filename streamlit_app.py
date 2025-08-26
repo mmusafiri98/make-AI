@@ -42,27 +42,37 @@ if st.button("Genera Video"):
                     api_name="/generate_video"
                 )
 
-                # Estrai i bytes dal tuple restituito
-                video_bytes = result[0] if isinstance(result, tuple) else result
+                # Controlla il tipo di risultato e ottieni i bytes
+                if isinstance(result, dict):
+                    # La chiave può variare: spesso è "video" o "data"
+                    if "video" in result:
+                        video_bytes = result["video"]
+                    elif "data" in result:
+                        video_bytes = result["data"]
+                    else:
+                        st.error("Errore: il video non è stato trovato nel risultato.")
+                        video_bytes = None
+                else:
+                    st.error("Errore: formato del risultato non riconosciuto.")
+                    video_bytes = None
 
-                # Salva temporaneamente il video
-                tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-                tmp_file.write(video_bytes)
-                tmp_file.close()
+                if video_bytes:
+                    # Salva temporaneamente il video
+                    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+                    tmp_file.write(video_bytes)
+                    tmp_file.close()
 
-                # Mostra il video
-                st.video(tmp_file.name)
-                
-                # Pulsante per scaricare
-                with open(tmp_file.name, "rb") as f:
-                    video_data = f.read()
-                    b64 = base64.b64encode(video_data).decode()
-                    st.markdown(f"[Scarica Video](data:video/mp4;base64,{b64})", unsafe_allow_html=True)
+                    # Mostra il video
+                    st.video(tmp_file.name)
+                    
+                    # Pulsante per scaricare il video
+                    with open(tmp_file.name, "rb") as f:
+                        video_data = f.read()
+                        b64 = base64.b64encode(video_data).decode()
+                        st.markdown(f"[Scarica Video](data:video/mp4;base64,{b64})", unsafe_allow_html=True)
 
-                # Rimuovi il file temporaneo
-                os.unlink(tmp_file.name)
+                    # Rimuovi il file temporaneo
+                    os.unlink(tmp_file.name)
 
             except Exception as e:
                 st.error(f"Errore durante la generazione del video: {e}")
-
-                
